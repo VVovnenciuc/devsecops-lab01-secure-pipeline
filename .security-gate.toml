@@ -1,0 +1,18 @@
+# Politica gate-ului de securitate — versionată în Git, schimbată doar prin PR (cu review)
+fail_on = "high"
+
+[tool_severity]
+# Orice secret găsit e critic, indiferent ce raportează tool-ul
+gitleaks = "critical"
+
+# Excepții TEMPORARE: fiecare are obligatoriu motiv + dată de expirare.
+# După expirare, finding-ul blochează din nou automat.
+[[waivers]]
+rule_id = "CVE-2026-8643"
+reason = "Se așteaptă actualizarea imaginii de bază / fals pozitiv în contextul dat"
+expires = 2026-12-31
+
+# rule_id = "CVE-2026-12345"
+# path = "uv.lock"
+# reason = "fără fix publicat; funcția vulnerabilă nu e apelată de aplicație"
+# expires = 2026-11-30
