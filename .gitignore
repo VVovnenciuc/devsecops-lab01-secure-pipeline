@@ -222,3 +222,8 @@ __marimo__/
 
 # lab
 .audit-requirements.txt
+
+# lab01
+reports/
+*.sarif
+*.spdx.json
