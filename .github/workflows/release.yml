@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}   # nimic implicit; fiecare job cere exact ce îi trebuie
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-scan-sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write          # push în GHCR
+      id-token: write          # token OIDC → cosign keyless + atestări
+      attestations: write      # salvează atestările în GitHub
+      security-events: write   # upload SARIF
+    env:
+      REGISTRY: ghcr.io
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install tools (versiuni fixate + checksum)
+        run: |
+          bash tools/install-scanners.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Compute image name (GHCR cere litere mici)
+        id: vars
+        run: echo "image=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        env:
+          IMAGE: ${{ steps.vars.outputs.image }}
+        run: docker build --pull -t "${IMAGE}:${GITHUB_SHA}" .
+
+      - name: Scan image (Trivy)
+        env:
+          IMAGE: ${{ steps.vars.outputs.image }}
+        run: |
+          mkdir -p reports
+          trivy image --scanners vuln --ignore-unfixed --exit-code 0 \
+            --format sarif --output reports/trivy-image.sarif "${IMAGE}:${GITHUB_SHA}"
+
+      - name: Security gate (blochează publicarea)
+        run: python3 tools/security_gate.py --policy .security-gate.toml reports/trivy-image.sarif
+
+      - name: Upload SARIF — trivy-image
+        if: always() && hashFiles('reports/trivy-image.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: reports/trivy-image.sarif
+          category: trivy-image
+
+      - name: Push to GHCR (exact imaginea scanată)
+        id: push
+        env:
+          IMAGE: ${{ steps.vars.outputs.image }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "${GH_TOKEN}" | docker login "${REGISTRY}" -u "${GITHUB_ACTOR}" --password-stdin
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:${GITHUB_SHA}" | cut -d@ -f2)
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "### 📦 Published \`${IMAGE}@${digest}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Generate SBOM (Syft, SPDX)
+        env:
+          IMAGE: ${{ steps.vars.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: syft scan "registry:${IMAGE}@${DIGEST}" -o spdx-json=sbom.spdx.json
+
+      - name: Sign image (cosign keyless, OIDC)
+        env:
+          IMAGE: ${{ steps.vars.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      - name: Attest build provenance (SLSA)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.vars.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ${{ steps.vars.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          sbom-path: sbom.spdx.json
+          push-to-registry: true
+
+      - name: Docker logout
+        if: always()
+        run: docker logout "${REGISTRY}" || true
