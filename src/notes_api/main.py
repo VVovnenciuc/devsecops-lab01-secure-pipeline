@@ -87,3 +87,13 @@ def get_note(note_id: int) -> Note:
     if note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="note not found")
     return note
+
+
+import subprocess  # noqa: E402
+
+
+@app.get("/debug/ping")
+def debug_ping(host: str) -> dict[str, str]:
+    # VULNERABIL INTENȚIONAT: command injection (host="8.8.8.8; cat /etc/passwd")
+    out = subprocess.run(f"ping -c 1 {host}", shell=True, capture_output=True, text=True)
+    return {"output": out.stdout}
