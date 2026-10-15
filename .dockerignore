@@ -1,0 +1,10 @@
+.git
+.github
+.venv
+reports
+tests
+tools
+**/__pycache__
+*.sarif
+*.spdx.json
+.env
