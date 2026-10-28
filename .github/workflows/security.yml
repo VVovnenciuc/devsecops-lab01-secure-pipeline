@@ -58,35 +58,35 @@ jobs:
 
       - name: Upload SARIF — semgrep
         if: always() && hashFiles('reports/semgrep.sarif') != ''
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: reports/semgrep.sarif
           category: semgrep
 
       - name: Upload SARIF — bandit
         if: always() && hashFiles('reports/bandit.sarif') != ''
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: reports/bandit.sarif
           category: bandit
 
       - name: Upload SARIF — gitleaks
         if: always() && hashFiles('reports/gitleaks.sarif') != ''
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: reports/gitleaks.sarif
           category: gitleaks
 
       - name: Upload SARIF — trivy-fs
         if: always() && hashFiles('reports/trivy-fs.sarif') != ''
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: reports/trivy-fs.sarif
           category: trivy-fs
 
       - name: Upload SARIF — hadolint
         if: always() && hashFiles('reports/hadolint.sarif') != ''
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: reports/hadolint.sarif
           category: hadolint
